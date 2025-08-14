@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>ستونی قابل کلیک - پروکسی‌های نهایی</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      direction: rtl;
+    }
+
+    h1 {
+      text-align: center;
+      color: #00bcd4;
+      margin-bottom: 30px;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      background-color: #1e1e2f;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+      border: 1px solid #333;
+    }
+
+    .tab:hover {
+      background-color: #333;
+    }
+
+    .tab.active {
+      background-color: #00bcd4;
+      color: #fff;
+    }
+
+    .proxy-section {
+      background-color: #1e1e2f;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      max-height: 70vh;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .proxy-section.active {
+      display: block;
+    }
+
+    .proxy-line {
+      cursor: pointer;
+      padding: 4px 0;
+    }
+
+    .proxy-line:hover {
+      background-color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>لیست پروکسی‌ها بر اساس نوع</h1>
+
+  <div class="tabs">
+    <div class="tab active" data-target="httpList">HTTP</div>
+    <div class="tab" data-target="socks4List">SOCKS4</div>
+    <div class="tab" data-target="socks5List">SOCKS5</div>
+  </div>
+
+  <div id="httpList" class="proxy-section active">در حال دریافت...</div>
+  <div id="socks4List" class="proxy-section">در حال دریافت...</div>
+  <div id="socks5List" class="proxy-section">در حال دریافت...</div>
+
+  <script>
+    // تب‌ها
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.proxy-section').forEach(s => s.classList.remove('active'));
+
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.target).classList.add('active');
+      });
+    });
+
+    // کپی با کلیک
+    function createProxyLine(text) {
+      const line = document.createElement('div');
+      line.className = 'proxy-line';
+      line.textContent = text;
+      line.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          line.textContent = '✅ ' + text;
+          setTimeout(() => line.textContent = text, 2000);
+        } catch (err) {
+          console.error('خطا در کپی:', err);
+        }
+      };
+      return line;
+    }
+
+    // دریافت پروکسی‌ها از چند API
+    async function fetchProxies() {
+      const httpList = document.getElementById('httpList');
+      const socks4List = document.getElementById('socks4List');
+      const socks5List = document.getElementById('socks5List');
+
+      // پیام اولیه
+      httpList.textContent = 'در حال دریافت...';
+      socks4List.textContent = 'در حال دریافت...';
+      socks5List.textContent = 'در حال دریافت...';
+
+      const http = [], socks4 = [], socks5 = [];
+
+      try {
+        const res1 = await fetch('https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&country=all&proxy_format=protocolipport&format=text&timeout=20000');
+        const text1 = await res1.text();
+        text1.trim().split('\n').forEach(line => {
+          if (line.startsWith('http')) http.push(line);
+          else if (line.startsWith('socks4')) socks4.push(line);
+          else if (line.startsWith('socks5')) socks5.push(line);
+        });
+      } catch (err) {
+        console.error('ProxyScrape error:', err);
+      }
+
+      try {
+        const res2 = await fetch('http://pubproxy.com/api/proxy');
+        const json2 = await res2.json();
+        if (json2.data && json2.data.length) {
+          const p = json2.data[0];
+          http.push(`http://${p.ip}:${p.port}`);
+        }
+      } catch (err) {
+        console.error('PubProxy error:', err);
+      }
+
+      try {
+        const res3 = await fetch('https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc');
+        const json3 = await res3.json();
+        json3.data.forEach(p => {
+          const line = `${p.protocols[0]}://${p.ip}:${p.port}`;
+          if (p.protocols.includes('http')) http.push(line);
+          else if (p.protocols.includes('socks4')) socks4.push(line);
+          else if (p.protocols.includes('socks5')) socks5.push(line);
+        });
+      } catch (err) {
+        console.error('Geonode error:', err);
+      }
+
+      try {
+        const res4 = await fetch('https://mtpro.xyz/api/?type=socks');
+        const json4 = await res4.json();
+        json4.forEach(p => {
+          socks5.push(`socks5://${p.ip}:${p.port}`);
+        });
+      } catch (err) {
+        console.error('mtpro.xyz error:', err);
+      }
+
+      // پاک کردن پیام اولیه
+      httpList.textContent = '';
+      socks4List.textContent = '';
+      socks5List.textContent = '';
+
+      http.forEach(p => httpList.appendChild(createProxyLine(p)));
+      socks4.forEach(p => socks4List.appendChild(createProxyLine(p)));
+      socks5.forEach(p => socks5List.appendChild(createProxyLine(p)));
+    }
+
+    fetchProxies();
+  </script>
+
+</body>
+</html>
