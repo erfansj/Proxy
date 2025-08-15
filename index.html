@@ -1,113 +1,111 @@
 <!DOCTYPE html>
 <html lang="fa">
 <head>
-  <meta charset="UTF-8">
-  <title>لیست پروکسی‌ها بر اساس نوع</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لیست پروکسی‌های رایگان</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #f5f5f5;
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: "Vazir", sans-serif;
+      margin: 0;
+      padding: 0;
       text-align: center;
-      padding: 20px;
     }
     h1 {
-      color: #333;
+      margin-top: 20px;
+      font-size: 1.8em;
     }
     .buttons {
-      margin-bottom: 20px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
     }
-    .buttons button {
-      margin: 5px;
+    button {
+      background-color: #1f1f1f;
+      color: #e0e0e0;
+      border: 1px solid #444;
       padding: 10px 20px;
-      font-size: 16px;
+      margin: 5px;
       cursor: pointer;
+      border-radius: 5px;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #333;
     }
     .proxy-list {
       max-width: 600px;
-      margin: auto;
-      background: #fff;
-      padding: 15px;
+      margin: 0 auto;
+      padding: 10px;
+      background-color: #1e1e1e;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 10px #000;
     }
-    .proxy-line {
+    .proxy-list ul {
+      list-style: none;
+      padding: 0;
+    }
+    .proxy-list li {
       padding: 8px;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
+      border-bottom: 1px solid #333;
+      direction: ltr;
+      text-align: left;
     }
-    .proxy-line:hover {
-      background: #e0f7fa;
+    .proxy-list li:last-child {
+      border-bottom: none;
     }
   </style>
 </head>
 <body>
-  <h1>لیست پروکسی‌ها بر اساس نوع</h1>
+  <h1>🛡️ لیست پروکسی‌های رایگان</h1>
   <div class="buttons">
-    <button onclick="showProxies('SOCKS5')">SOCKS5</button>
-    <button onclick="showProxies('SOCKS4')">SOCKS4</button>
-    <button onclick="showProxies('HTTP')">HTTP</button>
+    <button onclick="loadProxies('SOCKS5')">SOCKS5</button>
+    <button onclick="loadProxies('SOCKS4')">SOCKS4</button>
+    <button onclick="loadProxies('HTTP')">HTTP</button>
+    <button onclick="loadProxies('ALL')">همه</button>
   </div>
-  <div class="proxy-list" id="proxyList"></div>
+  <div class="proxy-list">
+    <ul id="proxyList"><li>برای مشاهده پروکسی‌ها، نوع مورد نظر را انتخاب کنید.</li></ul>
+  </div>
 
   <script>
-    const proxies = {
-      SOCKS5: [
-        "socks5://117.74.65.207:443",
-        "socks5://117.74.65.207:80",
-        "socks5://94.73.251.19:1080",
-        "socks5://5.139.243.28:7788",
-        "socks5://213.168.250.121:40418",
-        "socks5://75.119.205.218:32238",
-        "socks5://193.106.57.7:33429",
-        "socks5://104.255.170.68:50109",
-        "socks5://144.202.23.95:20199",
-        "socks5://84.239.49.192:9002",
-        "socks5://95.38.75.146:2120",
-        "socks5://75.119.202.247:52186",
-        "socks5://89.239.167.157:7788",
-        "socks5://139.180.210.227:17880",
-        "socks5://178.44.162.208:7788",
-        "socks5://209.97.170.248:8080"
-      ],
-      SOCKS4: [
-        "socks4://192.168.1.1:1080",
-        "socks4://10.0.0.2:1080"
-      ],
-      HTTP: [
-        "http://123.45.67.89:8080",
-        "http://98.76.54.32:3128"
-      ]
-    };
+    const proxyList = document.getElementById("proxyList");
 
-    function showProxies(type) {
-      const list = document.getElementById('proxyList');
-      list.innerHTML = '';
-      proxies[type].forEach(proxy => {
-        list.appendChild(createProxyLine(proxy));
-      });
-    }
+    async function loadProxies(type) {
+      proxyList.innerHTML = "<li>در حال دریافت اطلاعات...</li>";
+      const urls = [
+        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
+        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
+        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+        "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/proxy.txt"
+      ];
 
-    function createProxyLine(text) {
-      const line = document.createElement('div');
-      const cleanText = text.replace(/^https?:\/\//, '')
-                            .replace(/^socks4:\/\//, '')
-                            .replace(/^socks5:\/\//, '');
-      line.className = 'proxy-line';
-      line.textContent = cleanText;
-      line.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(cleanText);
-          line.textContent = '✅ ' + cleanText;
-          setTimeout(() => line.textContent = cleanText, 2000);
-        } catch (err) {
-          console.error('خطا در کپی:', err);
+      let proxies = [];
+
+      try {
+        const responses = await Promise.all(urls.map(url => fetch(url)));
+        const texts = await Promise.all(responses.map(res => res.text()));
+
+        texts.forEach((text, index) => {
+          const lines = text.split("\n").map(line => line.trim()).filter(line => line);
+          if (type === "SOCKS5" && index === 0) proxies = lines;
+          else if (type === "SOCKS4" && index === 1) proxies = lines;
+          else if (type === "HTTP" && index === 2) proxies = lines;
+          else if (type === "ALL") proxies.push(...lines);
+        });
+
+        if (proxies.length === 0) {
+          proxyList.innerHTML = "<li>پروکسی‌ای یافت نشد.</li>";
+        } else {
+          proxyList.innerHTML = proxies.map(p => `<li>${p.replace(/^(socks5|socks4|http):\/\//, "")}</li>`).join("");
         }
-      };
-      return line;
+      } catch (error) {
+        proxyList.innerHTML = `<li>خطا در دریافت اطلاعات: ${error.message}</li>`;
+      }
     }
-
-    // نمایش اولیه SOCKS5
-    showProxies('SOCKS5');
   </script>
 </body>
 </html>
